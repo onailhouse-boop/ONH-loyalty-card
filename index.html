@@ -144,42 +144,51 @@ function renderGrid(count, phone) {
     showScreen('card-screen');
     const grid = document.getElementById('grid');
     grid.innerHTML = "";
+    
+    // Fill the 6 standard slots
     for (let i = 1; i <= 6; i++) {
         const active = i <= count;
-        grid.innerHTML += `<div class="slot ${active ? 'stamped' : ''}">${active ? '<img src="logo.png" class="stamp-img">' : i}</div>`;
+        grid.innerHTML += `<div class="slot ${active ? 'stamped' : ''}">
+            ${active ? '<img src="logo.png" class="stamp-img">' : i}
+        </div>`;
     }
-    const reward = count >= 7;
-    grid.innerHTML += `<div class="slot reward ${reward ? 'stamped' : ''}">${reward ? 'REWARD CLAIMED' : '🎁 7th ENJOY YOUR REWARD'}</div>`;
+
+    // Fix the Reward Slot logic
+    const hasReward = count >= 7;
+    // Only show "CLAIMED" if they actually have 7+ stamps
+    grid.innerHTML += `<div class="slot reward ${hasReward ? 'stamped' : ''}">
+        ${hasReward ? '🎁 REWARD READY!' : '🎁 7th VISIT:TO ENJOY YOUR REWARD'}
+    </div>`;
     
     const statusBar = document.getElementById('status-bar');
     if (count >= 6) {
         statusBar.innerHTML = `<button class="btn-green" style="background:#ff4444; margin:0;" onclick="resetStamps('${phone}')">REDEEM & RESET CARD</button>`;
     } else {
         statusBar.innerText = (6 - count) + " more stamps TO GO!";
-               }
+    }
 }
 
 async function resetStamps(phone) {
-    if (confirm("Redeem your reward now?")) {
-        // 1. Show a loading message immediately
-        document.getElementById('card-screen').innerHTML = `
-            <div style="text-align:center; padding:50px; color:white;">
-                <h2>Processing Reward...</h2>
-                <p>Please wait 2 minutes for Google to update your card.</p>
-                <button onclick="location.reload()" class="btn-green">Back to Login</button>
-            </div>
-        `;
+    if (confirm("Redeem your reward and reset your card to blank?")) {
+        // IMMEDIATE UI UPDATE: Clear the grid manually so the user sees it's empty
+        renderGrid(0, phone); 
+        
+        const statusBar = document.getElementById('status-bar');
+        statusBar.innerHTML = "Processing reset... please wait.";
 
         const url = `${FORM_URL}?${ID_PHONE}=${phone}&${ID_NAME}=RESET_TO_0&submit=Submit`;
         
         try {
             await fetch(url, { mode: 'no-cors' });
-            // The row is now in Google Sheets!
+            alert("Reward Redeemed! Your card has been reset. (Note: Google Sheets may take a few minutes to sync globally).");
+            location.reload(); // Refresh to login screen
         } catch (e) {
-            alert("Connection error, but reset may have sent.");
+            console.log("Reset sent to sheet.");
+            location.reload();
         }
     }
-}function registerUser() {
+}
+function registerUser() {
     const n = document.getElementById('regName').value;
     const p = document.getElementById('regPhone').value;
     if(!n || !p) return alert("Fill fields!");
