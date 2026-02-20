@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Organic Nail House Loyalty Card</title>
+    <style>
+        :root { --salon-green: #008000; --light-green: #ECFFDC; --circle-border: #a5d6a7; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--light-green); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .app-container { background: white; width: 85%; max-width: 340px; padding: 25px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+        .header-box { display: flex; align-items: center; justify-content: start; gap: 5px; margin-bottom: 5px; }
+        .salon-logo { width: 120px; height: 120px;  }
+        .salon-name { color: var(--salon-green); font-size: 17px; font-weight: 800; }
+        input { width: 90%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 10px; text-align: center; font-size: 16px; }
+        .btn-green { background: var(--salon-green); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
+        .punch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+        .slot { width: 100%; aspect-ratio: 1/1; border: 2px dashed var(--circle-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; object-fit: contain;}
+        .slot.stamped { border: 2px solid var(--salon-green); }
+        .stamp-img { width: 71%; height: 80%; object-fit: contain; }
+        .slot.reward { grid-column: span 3; border-radius: 15px; height: 50px; border-style: solid; color: var(--salon-green); font-weight: bold; aspect-ratio: auto; }
+        .sub-link { color: #888; font-size: 12px; text-decoration: underline; cursor: pointer; display: block; margin-top: 10px; padding: 5px; }
+        #status-bar { margin-top: 10px; font-weight: bold; color: var(--salon-green); font-size: 14px; min-height: 30px; display: flex; align-items: center; justify-content: center; }
+.tiny-text {
+    font-size: 2px; /* Standard small text is 10px-12px, 8px is very tiny */
+    line-height: 1.1; /* Squeezes the vertical gap between lines */
+    margin-top: 1px;  /* Pulls it closer to the element above */
+}
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header-box">
+        <img src="logo.png" alt="Logo" class="salon-logo">
+        <span class="salon-name">ORGANIC NAIL HOUSE</span>
+    </div>
+
+    <div id="login-screen">
+        <p style="font-size: 14px; font-weight: 700;">NEIGHBOR CARD ✨</p>
+<div id="rules-container" style="display: block !important; width: 100%; text-align: center; margin: 10px 0;">
+    <p style="color: #000000 !important; font-size: 8px; line-height: 1.2; font-weight: bold; margin: 0; padding: 0 10px;">
+        Card must be stamped at the time of purchase with services over $25.<br>
+        Not to be used with any other coupons or special offers.<br>
+        Stamps apply to purchase of nail service only. NO CASH VALUE.
+    </p>
+</div>
+        <p style="font-size: 10px; font-weight: 600; color: #FF0099">GET FREE PARAFIN, ORGANIC SCRUB OR $10 DISCOUNT ON THE 7th VISIT</p>
+
+        <input type="tel" id="phoneInput" placeholder="Enter Phone Number">
+        <button class="btn-green" onclick="checkStamps()">VIEW MY CARD</button>
+        <span class="sub-link" onclick="showScreen('register-screen')">New? Register Here</span>
+    </div>
+
+    <div id="register-screen" style="display:none;">
+        <input type="text" id="regName" placeholder="Full Name">
+        <input type="tel" id="regPhone" placeholder="Phone Number">
+        <button class="btn-green" onclick="registerUser()">SIGN UP</button>
+        <span class="sub-link" onclick="showScreen('login-screen')">Back to Login</span>
+    </div>
+
+    <div id="card-screen" style="display:none;">
+        <div class="punch-grid" id="grid"></div>
+        <div id="status-bar">Connecting...</div>
+        <span class="sub-link" onclick="location.reload()">Log Out</span>
+    </div>
+
+    <div id="manager-screen" style="display:none;">
+        <h3 style="color: var(--salon-green);">Manager</h3>
+        <input type="tel" id="mgrPhone" placeholder="Customer Phone">
+        <button class="btn-green" onclick="addStampRemote()">+1 STAMP</button>
+        <span class="sub-link" onclick="location.reload()">Exit</span>
+    </div>
+</div>
+
+<script>
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWB9vf-gyH43QcsFcA_FJxnH5AvoEBnYE-4ApQFwz9hVOTUKIFDWvkswVyZmEh1O_Nu3PZyF_aDvHl/pub?gid=0&single=true&output=csv";
+const FORM_URL = "https://docs.google.com/forms/d/1t7JZRgJ-XH5S9iXv0Z9GvMu6_gLVJUVrytqr-D5Y8LQ/formResponse";
+const ID_PHONE = "entry.745005599"; 
+const ID_NAME = "entry.1226234441";  
+const MASTER_PIN = "4256"; 
+
+function showScreen(id) {
+    const screens = ['login-screen', 'register-screen', 'manager-screen', 'card-screen'];
+    screens.forEach(s => document.getElementById(s).style.display = (s === id) ? 'block' : 'none');
+}
+async function checkStamps() {
+    const val = document.getElementById('phoneInput').value.trim();
+    if (val === MASTER_PIN) return showScreen('manager-screen');
+    if (!val) return alert("Enter phone!");
+
+    const btn = document.querySelector('#login-screen .btn-green');
+    btn.innerText = "CONNECTING...";
+    btn.disabled = true;
+
+    try {
+        // We switch to a more transparent proxy to avoid the Base64 issue
+        const freshUrl = SHEET_CSV_URL + "&cachebuster=" + Date.now();
+        const proxy = `https://corsproxy.io/?${encodeURIComponent(freshUrl)}`;
+        
+        const res = await fetch(proxy);
+        const data = await res.text(); // This reads the text directly
+
+        if (!data || data.includes("google-signin")) {
+            alert("Sheet is not public. Check 'Publish to Web' settings.");
+            return;
+        }
+
+        const cleanInput = val.replace(/\D/g, ''); 
+        const rows = data.split(/\r?\n/);
+        let foundRow = null;
+
+        for (let rowText of rows) {
+            // Remove quotes and non-digits to find the phone match
+            let cleanRowText = rowText.replace(/["']/g, '').replace(/\D/g, '');
+            if (cleanRowText.includes(cleanInput) && cleanInput !== "") {
+                foundRow = rowText.split(/[;,]/);
+                break;
+            }
+        }
+
+        if (foundRow) {
+            let count = 0;
+            foundRow.forEach(cell => {
+                let cleanCell = cell.replace(/["']/g, '').trim();
+                let onlyDigits = cleanCell.replace(/\D/g, '');
+                // Identify the stamp count (not the phone number)
+                if (cleanCell !== "" && !isNaN(cleanCell) && onlyDigits !== cleanInput) {
+                    count = parseInt(cleanCell);
+                }
+            });
+            renderGrid(count, cleanInput);
+        } else {
+            alert("Number " + cleanInput + " not found.\n\nNote: If you just added it, wait 2 mins for Google to sync.");
+        }
+    } catch (e) {
+        alert("Connection Error. Please check your internet.");
+    } finally {
+        btn.innerText = "VIEW MY CARD";
+        btn.disabled = false;
+    }
+}
+
+function renderGrid(count, phone) {
+    showScreen('card-screen');
+    const grid = document.getElementById('grid');
+    grid.innerHTML = "";
+    for (let i = 1; i <= 6; i++) {
+        const active = i <= count;
+        grid.innerHTML += `<div class="slot ${active ? 'stamped' : ''}">${active ? '<img src="logo.png" class="stamp-img">' : i}</div>`;
+    }
+    const reward = count >= 7;
+    grid.innerHTML += `<div class="slot reward ${reward ? 'stamped' : ''}">${reward ? 'REWARD CLAIMED' : '🎁 7th ENJOY YOUR REWARD'}</div>`;
+    
+    const statusBar = document.getElementById('status-bar');
+    if (count >= 6) {
+        statusBar.innerHTML = `<button class="btn-green" style="background:#ff4444; margin:0;" onclick="resetStamps('${phone}')">REDEEM & RESET CARD</button>`;
+    } else {
+        statusBar.innerText = (6 - count) + " more stamps TO GO!";
+               }
+}
+
+async function resetStamps(phone) {
+    if (confirm("Redeem your reward now?")) {
+        // 1. Show a loading message immediately
+        document.getElementById('card-screen').innerHTML = `
+            <div style="text-align:center; padding:50px; color:white;">
+                <h2>Processing Reward...</h2>
+                <p>Please wait 2 minutes for Google to update your card.</p>
+                <button onclick="location.reload()" class="btn-green">Back to Login</button>
+            </div>
+        `;
+
+        const url = `${FORM_URL}?${ID_PHONE}=${phone}&${ID_NAME}=RESET_TO_0&submit=Submit`;
+        
+        try {
+            await fetch(url, { mode: 'no-cors' });
+            // The row is now in Google Sheets!
+        } catch (e) {
+            alert("Connection error, but reset may have sent.");
+        }
+    }
+}function registerUser() {
+    const n = document.getElementById('regName').value;
+    const p = document.getElementById('regPhone').value;
+    if(!n || !p) return alert("Fill fields!");
+    new Image().src = `${FORM_URL}?${ID_PHONE}=${p}&${ID_NAME}=${encodeURIComponent(n)}&submit=Submit`;
+    alert("Sent! Wait 1 minute, then try viewing card.");
+    showScreen('login-screen');
+}
+
+function addStampRemote() {
+    const p = document.getElementById('mgrPhone').value;
+    new Image().src = `${FORM_URL}?${ID_PHONE}=${p}&${ID_NAME}=STAMP_VISIT&submit=Submit`;
+    alert("Stamp Added!");
+}
+</script>
+</body>
+</html>
