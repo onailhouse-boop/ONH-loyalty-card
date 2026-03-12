@@ -13,6 +13,7 @@
         .salon-name { color: var(--salon-green); font-size: 17px; font-weight: 800; }
         input { width: 90%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 10px; text-align: center; font-size: 16px; }
         .btn-green { background: var(--salon-green); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
+        .btn-green:disabled { background: #cccccc; cursor: not-allowed; }
         .punch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
         .slot { width: 100%; aspect-ratio: 1/1; border: 2px dashed var(--circle-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; position: relative; object-fit: contain;}
         .slot.stamped { border: 2px solid var(--salon-green); }
@@ -30,44 +31,46 @@
         <span class="salon-name">ORGANIC NAIL HOUSE</span>
     </div>
 
+    <div id="rules-container" style="display: block !important; width: 100%; text-align: center; margin: 10px 0;">
+        <p style="color: #000000 !important; font-size: 8px; line-height: 1.2; font-weight: bold; margin: 0; padding: 0 10px;">
+            Card must be stamped at the time of purchase with services over $25.<br>
+            Not to be used with any other coupons or special offers.<br>
+            Stamps apply to purchase of nail service only. NO CASH VALUE.
+        </p>
+    </div>
+
     <div id="login-screen">
         <p style="font-size: 14px; font-weight: 700;">NEIGHBOR CARD ✨</p>
-        <div id="rules-container" style="display: block !important; width: 100%; text-align: center; margin: 10px 0;">
-            <p style="color: #000000 !important; font-size: 8px; line-height: 1.2; font-weight: bold; margin: 0; padding: 0 10px;">
-                Card must be stamped at the time of purchase with services over $25.<br>
-                Not to be used with any other coupons or special offers.<br>
-                Stamps apply to purchase of nail service only. NO CASH VALUE.
-            </p>
-        </div>
         <p style="font-size: 10px; font-weight: 600; color: #FF0099">GET FREE PARAFIN, ORGANIC SCRUB OR $10 DISCOUNT ON THE 7th VISIT</p>
 
         <input type="tel" id="phoneInput" placeholder="Enter Phone Number">
-        <button class="btn-green" onclick="checkStamps()">VIEW MY CARD</button>
+        <button class="btn-green" id="loginBtn" onclick="checkStamps()">VIEW MY CARD</button>
         <span class="sub-link" onclick="showScreen('register-screen')">New? Register Here</span>
     </div>
 
     <div id="register-screen" style="display:none;">
         <input type="text" id="regName" placeholder="Full Name">
         <input type="tel" id="regPhone" placeholder="Phone Number">
-        <button class="btn-green" onclick="registerUser()">SIGN UP</button>
+        <button class="btn-green" id="regBtn" onclick="registerUser()">SIGN UP</button>
         <span class="sub-link" onclick="showScreen('login-screen')">Back to Login</span>
     </div>
 
     <div id="card-screen" style="display:none;">
         <div class="punch-grid" id="grid"></div>
         <div id="status-bar">Connecting...</div>
-        <span class="sub-link" onclick="location.reload()">Log Out</span>
+        <span class="sub-link" onclick="location.reload()">Log Out / Refresh</span>
     </div>
 
     <div id="manager-screen" style="display:none;">
-        <h3 style="color: var(--salon-green);">Manager</h3>
+        <h3 style="color: var(--salon-green);">Manager Panel</h3>
         <input type="tel" id="mgrPhone" placeholder="Customer Phone">
-        <button class="btn-green" onclick="addStampRemote()">+1 STAMP</button>
+        <button class="btn-green" id="mgrBtn" onclick="addStampRemote()">+1 STAMP</button>
         <span class="sub-link" onclick="location.reload()">Exit</span>
     </div>
 </div>
 
 <script>
+// Change this to YOUR Sheet ID if different
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWB9vf-gyH43QcsFcA_FJxnH5AvoEBnYE-4ApQFwz9hVOTUKIFDWvkswVyZmEh1O_Nu3PZyF_aDvHl/pub?gid=0&single=true&output=csv";
 const FORM_URL = "https://docs.google.com/forms/d/1t7JZRgJ-XH5S9iXv0Z9GvMu6_gLVJUVrytqr-D5Y8LQ/formResponse";
 const ID_PHONE = "entry.745005599"; 
@@ -82,19 +85,20 @@ function showScreen(id) {
 async function checkStamps() {
     const val = document.getElementById('phoneInput').value.trim();
     if (val === MASTER_PIN) return showScreen('manager-screen');
-    if (!val) return alert("Enter phone!");
+    if (!val) return alert("Enter phone number!");
 
-    const btn = document.querySelector('#login-screen .btn-green');
+    const btn = document.getElementById('loginBtn');
     btn.innerText = "CONNECTING...";
     btn.disabled = true;
 
     try {
+        // Sync fix: Add timestamp to ignore cache
         const freshUrl = SHEET_CSV_URL + "&t=" + Date.now();
         const res = await fetch(freshUrl);
         const data = await res.text();
 
         if (data.includes("<!DOCTYPE html>") || data.includes("google-signin")) {
-            alert("Access Denied: Please set your Google Sheet to 'Anyone with the link can view'.");
+            alert("Connection Blocked: Please set Google Sheet to 'Anyone with the link can view'.");
             return;
         }
 
@@ -121,10 +125,10 @@ async function checkStamps() {
             });
             renderGrid(count, cleanInput);
         } else {
-            alert("Number " + cleanInput + " not found.\n\nNote: If you just added it, wait 2 mins for Google to sync.");
+            alert("Number not found. If you just registered, wait 1 minute for Google to sync.");
         }
     } catch (e) {
-        alert("Connection Error. Please check your internet or Sheet permissions.");
+        alert("Connection Error. Check your internet.");
     } finally {
         btn.innerText = "VIEW MY CARD";
         btn.disabled = false;
@@ -140,11 +144,11 @@ function renderGrid(count, phone) {
         grid.innerHTML += `<div class="slot ${active ? 'stamped' : ''}">${active ? '<img src="logo.png" class="stamp-img">' : i}</div>`;
     }
     const hasReward = count >= 7;
-    grid.innerHTML += `<div class="slot reward ${hasReward ? 'stamped' : ''}">${hasReward ? '🎁 REWARD READY!' : '🎁 7th VISIT: TO ENJOY YOUR REWARD'}</div>`;
+    grid.innerHTML += `<div class="slot reward ${hasReward ? 'stamped' : ''}">${hasReward ? '🎁 REWARD READY!' : '🎁 7th VISIT: REWARD'}</div>`;
     
     const statusBar = document.getElementById('status-bar');
     if (count >= 6) {
-        statusBar.innerHTML = `<button class="btn-green" style="background:#ff4444; margin:0;" onclick="resetStamps('${phone}')">REDEEM & RESET CARD</button>`;
+        statusBar.innerHTML = `<button class="btn-green" id="redeemBtn" style="background:#ff4444; margin:0;" onclick="resetStamps('${phone}')">REDEEM & RESET</button>`;
     } else {
         statusBar.innerText = (6 - count) + " more stamps TO GO!";
     }
@@ -152,10 +156,14 @@ function renderGrid(count, phone) {
 
 async function resetStamps(phone) {
     if (confirm("Redeem reward and reset card?")) {
+        const btn = document.getElementById('redeemBtn');
+        btn.disabled = true;
+        btn.innerText = "PROCESSING...";
+
         const url = `${FORM_URL}?${ID_PHONE}=${phone}&${ID_NAME}=RESET_TO_0&submit=Submit`;
         try {
             await fetch(url, { mode: 'no-cors' });
-            alert("Reset request sent! Please wait 1-2 minutes for Google to update.");
+            alert("Success! Card reset. Please wait 1 minute for Google to sync.");
             location.reload();
         } catch (e) {
             location.reload();
@@ -166,16 +174,39 @@ async function resetStamps(phone) {
 function registerUser() {
     const n = document.getElementById('regName').value;
     const p = document.getElementById('regPhone').value;
-    if(!n || !p) return alert("Fill fields!");
+    const btn = document.getElementById('regBtn');
+
+    if(!n || !p) return alert("Please fill both fields!");
+
+    btn.disabled = true;
+    btn.innerText = "SAVING...";
+
     new Image().src = `${FORM_URL}?${ID_PHONE}=${p}&${ID_NAME}=${encodeURIComponent(n)}&submit=Submit`;
-    alert("Sent! Wait 1 minute, then try viewing card.");
-    showScreen('login-screen');
+    
+    setTimeout(() => {
+        alert("Registered! Wait 1 minute for Google to sync, then Login.");
+        showScreen('login-screen');
+        btn.disabled = false;
+        btn.innerText = "SIGN UP";
+    }, 1500);
 }
 
 function addStampRemote() {
     const p = document.getElementById('mgrPhone').value;
+    const btn = document.getElementById('mgrBtn');
+    if(!p) return alert("Enter customer phone!");
+
+    btn.disabled = true;
+    btn.innerText = "STAMPING...";
+
     new Image().src = `${FORM_URL}?${ID_PHONE}=${p}&${ID_NAME}=STAMP_VISIT&submit=Submit`;
-    alert("Stamp Added!");
+
+    setTimeout(() => {
+        alert("Stamp added successfully!");
+        btn.disabled = false;
+        btn.innerText = "+1 STAMP";
+        document.getElementById('mgrPhone').value = "";
+    }, 1500);
 }
 </script>
 </body>
