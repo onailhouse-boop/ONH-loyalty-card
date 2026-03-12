@@ -84,26 +84,16 @@ function showScreen(id) {
     screens.forEach(s => document.getElementById(s).style.display = (s === id) ? 'block' : 'none');
 }
 async function checkStamps() {
-    const val = document.getElementById('phoneInput').value.trim();
-    if (val === MASTER_PIN) return showScreen('manager-screen');
-    if (!val) return alert("Enter phone!");
-
-    const btn = document.querySelector('#login-screen .btn-green');
-    btn.innerText = "CONNECTING...";
-    btn.disabled = true;
+    // ... your existing phone validation code ...
 
     try {
-        // We switch to a more transparent proxy to avoid the Base64 issue
-        const freshUrl = SHEET_CSV_URL + "&cachebuster=" + Date.now();
-        const proxy = `https://corsproxy.io/?${encodeURIComponent(freshUrl)}`;
+        // This tiny change "?t=" + Date.now() forces GitHub to get NEW data
+        const freshUrl = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + "t=" + Date.now();
         
-        const res = await fetch(proxy);
-        const data = await res.text(); // This reads the text directly
-
-        if (!data || data.includes("google-signin")) {
-            alert("Sheet is not public. Check 'Publish to Web' settings.");
-            return;
-        }
+        const res = await fetch(freshUrl);
+        const data = await res.text();
+        
+        // ... rest of your logic ...
 
         const cleanInput = val.replace(/\D/g, ''); 
         const rows = data.split(/\r?\n/);
@@ -204,4 +194,5 @@ function addStampRemote() {
 }
 </script>
 </body>
+
 </html>
