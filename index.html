@@ -87,13 +87,22 @@ async function checkStamps() {
     // ... your existing phone validation code ...
 
     try {
-        // This tiny change "?t=" + Date.now() forces GitHub to get NEW data
-        const freshUrl = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + "t=" + Date.now();
-        
-        const res = await fetch(freshUrl);
-        const data = await res.text();
-        
-        // ... rest of your logic ...
+    // Add a timestamp to force the browser to get NEW data
+    const freshUrl = SHEET_CSV_URL + "&t=" + Date.now();
+    
+    const res = await fetch(freshUrl);
+    const data = await res.text();
+
+    // If Google is blocking the request, the 'data' will contain HTML/Login text
+    if (data.includes("<!DOCTYPE html>") || data.includes("google-signin")) {
+        alert("Access Denied: Please set your Google Sheet to 'Anyone with the link can view'.");
+        return;
+    }
+    
+    // ... your parsing logic ...
+} catch (e) {
+    alert("Connection Error. Please check your internet or Sheet permissions.");
+}
 
         const cleanInput = val.replace(/\D/g, ''); 
         const rows = data.split(/\r?\n/);
